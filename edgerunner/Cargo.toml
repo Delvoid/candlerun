@@ -1,0 +1,27 @@
+[package]
+name = "edgerunner_test"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { version = "1.0.76", features = ["backtrace"] }
+candle-core = "0.3.2"
+candle-transformers = "0.3.2"
+clap = { version = "4.4.11", features = ["derive"] }
+config = "0.13.4"
+dirs = "5.0.1"
+env_logger = "0.10.1"
+hf-hub = "0.3.2"
+log = "0.4.20"
+serde = "1.0.193"
+serde_json = "1.0.108"
+tokenizers = "0.15.0"
+tokio = { version = "1.35.1", features = ["full"] }
+
+[features]
+accelerate = ["candle-core/accelerate"]
+
+[build-dependencies]
+anyhow = { version = "1.0.76", features = ["backtrace"] }

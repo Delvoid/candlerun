@@ -1,4 +1,12 @@
-use std::io::Write;
+use std::{
+    io::Write,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
+    time::Duration,
+};
 
 use edgerunner::{
     get_args,
@@ -10,6 +18,11 @@ use log::debug;
 
 fn main() {
     set_env_logger();
+    let stop_flag = Arc::new(AtomicBool::new(false));
+
+    // uncomment to simulate stop flag
+    // let stop_flag_clone = stop_flag.clone();
+    // simulate_stop_flag(stop_flag_clone);
 
     if let Err(e) = get_args().map(|args| {
         debug!(
@@ -38,10 +51,16 @@ fn main() {
             args.config.top_p,
         );
         let (response, prompt_tokens, prompt_secs, sampled, sampled_secs) = pipeline
-            .run(prompt, args.config.sample_len, &args.config.which, |t| {
-                print!("{t}");
-                std::io::stdout().flush().unwrap();
-            })
+            .run(
+                prompt,
+                args.config.sample_len,
+                &args.config.which,
+                stop_flag,
+                |t| {
+                    print!("{t}");
+                    std::io::stdout().flush().unwrap();
+                },
+            )
             .unwrap();
         println!(
             "\n\n{:4} prompt tokens processed: {:.2} token/s",
@@ -56,4 +75,15 @@ fn main() {
     }) {
         println!("Error: {}", e);
     }
+}
+
+#[allow(dead_code)]
+fn simulate_stop_flag(stop_flag: Arc<AtomicBool>) {
+    // Spawn a thread to simulate external stop after a certain duration
+    thread::spawn(move || {
+        // Set the duration for the simulated delay (e.g., 5 seconds)
+        thread::sleep(Duration::from_secs(10));
+        stop_flag.store(true, Ordering::SeqCst);
+        println!("Stop flag set by simulation thread");
+    });
 }

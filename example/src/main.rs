@@ -1,4 +1,12 @@
-use std::io::Write;
+use std::{
+    io::Write,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
+    time::Duration,
+};
 
 use edgerunner::{
     conf::{model::InferenceConfig, which::Which},
@@ -8,12 +16,18 @@ use edgerunner::{
 fn main() {
     // use deault model
     run_inference(None);
+
     // use selected zephyr model
-    run_inference(Some(Which::Zephyr7bBeta));
+    // run_inference(Some(Which::Zephyr7bBeta));
 }
 
 fn run_inference(which: Option<Which>) {
     let mut config = InferenceConfig::default();
+    let stop_flag = Arc::new(AtomicBool::new(false));
+
+    // uncomment to simulate stop flag
+    // let stop_flag_clone = stop_flag.clone();
+    // simulate_stop_flag(stop_flag_clone);
 
     if let Some(which) = which {
         config.which = which;
@@ -39,7 +53,7 @@ fn run_inference(which: Option<Which>) {
     );
 
     let (response, prompt_tokens, prompt_secs, sampled, sampled_secs) = pipeline
-        .run(prompt, config.sample_len, &config.which, |t| {
+        .run(prompt, config.sample_len, &config.which, stop_flag, |t| {
             print!("{t}");
             std::io::stdout().flush().unwrap();
         })
@@ -55,4 +69,15 @@ fn run_inference(which: Option<Which>) {
         sampled / sampled_secs
     );
     println!("Full response was {} bytes", response.as_bytes().len());
+}
+
+#[allow(dead_code)]
+fn simulate_stop_flag(stop_flag: Arc<AtomicBool>) {
+    // Spawn a thread to simulate external stop after a certain duration
+    thread::spawn(move || {
+        // Set the duration for the simulated delay (e.g., 5 seconds)
+        thread::sleep(Duration::from_secs(10));
+        stop_flag.store(true, Ordering::SeqCst);
+        println!("Stop flag set by simulation thread");
+    });
 }

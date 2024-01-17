@@ -1,4 +1,10 @@
-use std::io::Write;
+use std::{
+    io::Write,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use anyhow::Result;
 use candle_core::{Device, Tensor};
@@ -41,11 +47,20 @@ impl TextGeneration {
         }
     }
 
+    fn check_stop_flag(&self, stop_flag: &Arc<AtomicBool>) -> Result<()> {
+        if stop_flag.load(Ordering::SeqCst) {
+            println!("Operation was stopped by the user");
+            Err(anyhow::Error::msg("Operation was stopped by the user"))
+        } else {
+            Ok(())
+        }
+    }
     pub fn run(
         &mut self,
         prompt: GeneratedPrompt,
         sample_len: usize,
         which: &Which,
+        stop_flag: Arc<AtomicBool>,
         on_token: impl Fn(&str),
     ) -> Result<(String, f64, f64, f64, f64)> {
         // check if model is available
@@ -77,6 +92,8 @@ impl TextGeneration {
             prompt_tokens
         };
 
+        self.check_stop_flag(&stop_flag)?;
+
         let mut all_tokens = vec![];
 
         let start_prompt_processor = std::time::Instant::now();
@@ -86,6 +103,8 @@ impl TextGeneration {
             let logits = logits.squeeze(0)?;
             self.logits_processor.sample(&logits)?
         };
+
+        self.check_stop_flag(&stop_flag)?;
 
         let prompt_dt = start_prompt_processor.elapsed();
         all_tokens.push(next_token);
@@ -112,6 +131,7 @@ impl TextGeneration {
         let mut full_response = "".to_string();
         let mut sampled = 0;
         for index in 0..to_sample {
+            self.check_stop_flag(&stop_flag)?;
             let input = Tensor::new(&[next_token], &self.device)?.unsqueeze(0)?;
             let logits = self.model.forward(&input, prompt_tokens.len() + index)?;
             let logits = logits.squeeze(0)?;
@@ -136,6 +156,7 @@ impl TextGeneration {
             if next_token == eos_token {
                 break;
             }
+            self.check_stop_flag(&stop_flag)?;
         }
 
         if let Some(rest) = self

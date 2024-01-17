@@ -10,6 +10,7 @@ use log::debug;
 
 fn main() {
     set_env_logger();
+
     if let Err(e) = get_args().map(|args| {
         debug!(
             "avx: {}, neon: {}, simd128: {}, f16c: {}",
@@ -20,7 +21,6 @@ fn main() {
         );
 
         debug!("Args: {:?}", args);
-
         // TODO:: currently defaulting to chat prompt type
         let prompt = handle_user_input(args.config.which, &args.prompt).unwrap();
 

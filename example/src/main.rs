@@ -1,14 +1,23 @@
 use std::io::Write;
 
 use edgerunner::{
-    conf::model::InferenceConfig,
+    conf::{model::InferenceConfig, which::Which},
     model::{loader::LoadModel, prompt::handle_user_input},
     runner::text_generation::TextGeneration,
 };
 fn main() {
-    let config = InferenceConfig {
-        ..Default::default()
-    };
+    // use deault model
+    run_inference(None);
+    // use selected zephyr model
+    run_inference(Some(Which::Zephyr7bBeta));
+}
+
+fn run_inference(which: Option<Which>) {
+    let mut config = InferenceConfig::default();
+
+    if let Some(which) = which {
+        config.which = which;
+    }
 
     println!("Config: {:?}", config);
 

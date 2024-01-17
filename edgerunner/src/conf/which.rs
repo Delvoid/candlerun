@@ -1,3 +1,5 @@
+use std::fmt;
+
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +22,31 @@ pub enum Which {
     OpenChat35,
 }
 
+impl fmt::Display for Which {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = self.to_possible_value().unwrap();
+        write!(f, "{}", name.get_name())
+    }
+}
+
 impl Which {
+    // this is temporary solution while we only want to support a subset of models externally
+    pub fn is_available(&self) -> bool {
+        matches!(self, Self::Mistral7bInstructQ2)
+    }
+    pub fn available_models() -> Vec<Self> {
+        Self::value_variants()
+            .iter()
+            .filter_map(|&model| {
+                if model.is_available() {
+                    Some(model)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn is_mistral(&self) -> bool {
         match self {
             Self::OpenChat35

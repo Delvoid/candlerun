@@ -1,20 +1,26 @@
 use std::io::Write;
 
-use edgerunner_test::{
+use edgerunner::{
     get_args,
+    log_util::set_env_logger,
     model::{loader::LoadModel, prompt::handle_user_input},
     runner::text_generation::TextGeneration,
 };
+use log::debug;
 
 fn main() {
+    set_env_logger();
     if let Err(e) = get_args().map(|args| {
-        println!(
+        debug!(
             "avx: {}, neon: {}, simd128: {}, f16c: {}",
             candle_core::utils::with_avx(),
             candle_core::utils::with_neon(),
             candle_core::utils::with_simd128(),
             candle_core::utils::with_f16c()
         );
+
+        debug!("Args: {:?}", args);
+
         // TODO:: currently defaulting to chat prompt type
         let prompt = handle_user_input(args.config.which, &args.prompt).unwrap();
 

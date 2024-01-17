@@ -4,6 +4,7 @@ use conf::{model::InferenceConfig, which::Which};
 use model::loader::LoadModel;
 
 pub mod conf;
+pub mod log_util;
 pub mod model;
 pub mod runner;
 pub mod util;
@@ -42,7 +43,7 @@ pub fn get_args() -> anyhow::Result<ArgsResult> {
         .get_matches();
 
     let model = matches.get_one::<Which>("model").unwrap();
-    println!("Model: {:?}", model);
+
     let prompt_values = matches
         .get_many::<String>("prompt")
         .unwrap()

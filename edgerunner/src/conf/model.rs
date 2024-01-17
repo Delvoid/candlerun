@@ -20,8 +20,6 @@ pub struct InferenceConfig {
     pub repeat_last_n: usize,
     /// The tokenizer config in json format.
     pub tokenizer: Option<String>,
-    /// Enable tracing (generates a trace-timestamp.json file).
-    pub tracing: bool,
     /// Display the token for the specified prompt.
     pub verbose_prompt: bool,
     /// The model size to use.
@@ -39,7 +37,6 @@ impl Default for InferenceConfig {
             repeat_penalty: 1.1,
             repeat_last_n: 64,
             tokenizer: None,
-            tracing: true,
             verbose_prompt: true,
             which: Which::Mistral7b,
         }

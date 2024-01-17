@@ -1,6 +1,7 @@
 use crate::conf::which::Which;
 use anyhow::Result;
 
+#[allow(dead_code)]
 const DEFAULT_PROMPT: &str = "My favorite theorem is ";
 const DEFAULT_SYSTEM_PROMPT: &str = "<s>[INST] Always respond with concise messages with correct grammar. Avoid html tags, garbled content, and words that run into one another. If you don't know the answer to a question say 'I don't know'.[/INST] Understood! I will always respond with concise messages and correct grammar. If I don't know the answer to a question, I will say 'I don't know'.</s>";
 
@@ -17,6 +18,7 @@ impl GeneratedPrompt {
 #[derive(Debug)]
 enum Prompt {
     Chat(String),
+    #[allow(dead_code)]
     One(String),
 }
 
@@ -47,10 +49,6 @@ impl Prompt {
             Which::Mistral7bInstruct | Which::MixtralInstruct | Which::Mistral7bInstructQ2
         );
 
-        println!("which: {:?}", which);
-
-        println!("is_instruct: {}", is_instruct);
-
         // Handling different model types for prompt formatting
         if which.is_open_chat() {
             Ok(GeneratedPrompt(format!(
@@ -77,8 +75,6 @@ impl Prompt {
         text_from_chat: &str,
         conversation_history: Option<&[String]>,
     ) -> anyhow::Result<GeneratedPrompt> {
-        println!("Conversation history: {:?}", conversation_history);
-        println!("Text from chat: {}", text_from_chat);
         let prompt = if let Some(history) = conversation_history {
             // Use the last two entries from the conversation history
             let history_split = history
@@ -90,7 +86,6 @@ impl Prompt {
                 .collect::<Vec<String>>();
 
             if history_split.is_empty() {
-                println!("History is empty");
                 format!(
                     "{}\n[INST] {} [/INST] ",
                     DEFAULT_SYSTEM_PROMPT, text_from_chat

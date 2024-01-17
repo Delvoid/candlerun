@@ -18,7 +18,6 @@ pub struct LoadModel;
 
 impl LoadModel {
     pub fn load_model(config: &InferenceConfig) -> Result<Model> {
-        println!("Config: {:?}", config);
         let model_path = config.model()?;
 
         let model_weights = Self::load_model_weights(&model_path)?;
@@ -80,9 +79,6 @@ impl LoadModel {
         let cache = Cache::new(cache_dir);
 
         let (repo_name, model_filename) = which.get_repo_and_filename();
-
-        println!("Repo name: {}", repo_name);
-        println!("Model filename: {}", model_filename);
 
         let repo = Repo::new(repo_name.to_string(), RepoType::Model);
 

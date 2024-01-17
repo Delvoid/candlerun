@@ -48,6 +48,13 @@ impl TextGeneration {
         which: &Which,
         on_token: impl Fn(&str),
     ) -> Result<(String, f64, f64, f64, f64)> {
+        print!(
+            "avx: {}, neon: {}, simd128: {}, f16c: {}",
+            candle_core::utils::with_avx(),
+            candle_core::utils::with_neon(),
+            candle_core::utils::with_simd128(),
+            candle_core::utils::with_f16c()
+        );
         self.tokenizer.clear();
 
         let pre_prompt_tokens: Vec<u32> = vec![];

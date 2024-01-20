@@ -106,11 +106,13 @@ impl TextGeneration {
 
         self.check_stop_flag(&stop_flag)?;
 
+        let mut full_response = "".to_string();
+
         let prompt_dt = start_prompt_processor.elapsed();
         all_tokens.push(next_token);
         if let Some(t) = self.tokenizer.next_token(next_token)? {
-            print!("{t}");
-            std::io::stdout().flush()?;
+            on_token(&t);
+            full_response += &t;
         }
 
         let eos_token = if which.is_open_chat() {
@@ -128,7 +130,6 @@ impl TextGeneration {
 
         let start_post_prompt = std::time::Instant::now();
 
-        let mut full_response = "".to_string();
         let mut sampled = 0;
         for index in 0..to_sample {
             self.check_stop_flag(&stop_flag)?;

@@ -33,9 +33,11 @@ fn main() {
             candle_core::utils::with_f16c()
         );
 
+        // let system_prompt = "The following is a conversation with an AI assistant. The assistant is helpful, creative, clever, and very friendly.\n\nHuman: Hello, who are you?\nAI: I am an AI created by OpenAI. How can I help you today?\nHuman:";
+
         debug!("Args: {:?}", args);
         // TODO:: currently defaulting to chat prompt type
-        let prompt = handle_user_input(args.config.which, &args.prompt).unwrap();
+        let prompt = handle_user_input(args.config.which, &args.prompt, None).unwrap();
 
         // if model is not set in config it uses the which model details
         let model = LoadModel::load_model(&args.config).unwrap();

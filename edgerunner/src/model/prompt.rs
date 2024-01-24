@@ -3,7 +3,9 @@ use anyhow::Result;
 
 #[allow(dead_code)]
 const DEFAULT_PROMPT: &str = "My favorite theorem is ";
-const DEFAULT_SYSTEM_PROMPT: &str = "<s>[INST] Always respond with concise messages with correct grammar. Avoid html tags, garbled content, and words that run into one another. If you don't know the answer to a question say 'I don't know'.[/INST] Understood! I will always respond with concise messages and correct grammar. If I don't know the answer to a question, I will say 'I don't know'.</s>";
+// const DEFAULT_SYSTEM_PROMPT: &str = "<s>[INST] Always respond with concise messages with correct grammar. Avoid html tags, garbled content, and words that run into one another. If you don't know the answer to a question say 'I don't know'.[/INST] Understood! I will always respond with concise messages and correct grammar. If I don't know the answer to a question, I will say 'I don't know'.</s>";
+#[allow(dead_code)]
+const DEFAULT_SYSTEM_PROMPT: &str = "Always respond with concise messages with correct grammar. Avoid html tags, garbled content, and words that run into one another. If you don't know the answer to a question say 'I don't know'";
 
 #[derive(Debug)]
 pub struct GeneratedPrompt(pub String);
@@ -28,11 +30,12 @@ impl Prompt {
         &self,
         which: &Which,
         conversation_history: Option<&[String]>,
+        system_prompt: Option<&String>,
     ) -> anyhow::Result<GeneratedPrompt> {
         match self {
             Prompt::One(prompt) => Ok(GeneratedPrompt(prompt.clone())),
             Prompt::Chat(prompt) => {
-                self.generate_user_input_prompt(which, prompt, conversation_history)
+                self.generate_user_input_prompt(which, prompt, conversation_history, system_prompt)
             }
         }
     }
@@ -43,6 +46,7 @@ impl Prompt {
         which: &Which,
         prompt_text: &str,
         conversation_history: Option<&[String]>,
+        system_prompt: Option<&String>,
     ) -> Result<GeneratedPrompt> {
         let is_instruct = matches!(
             which,
@@ -60,7 +64,7 @@ impl Prompt {
             )))
         } else if which.is_mistral() {
             if is_instruct {
-                self.generate_mistral_prompt(prompt_text, conversation_history)
+                self.generate_mistral_prompt(prompt_text, conversation_history, system_prompt)
             } else {
                 Ok(GeneratedPrompt(format!("[INST] {prompt_text} [/INST]")))
             }
@@ -74,7 +78,13 @@ impl Prompt {
         &self,
         text_from_chat: &str,
         conversation_history: Option<&[String]>,
+        system_prompt: Option<&String>,
     ) -> anyhow::Result<GeneratedPrompt> {
+        let s_prompt = match system_prompt {
+            Some(prompt) => prompt.to_string(),
+            None => String::new(),
+        };
+
         let prompt = if let Some(history) = conversation_history {
             // Use the last two entries from the conversation history
             let history_split = history
@@ -87,20 +97,20 @@ impl Prompt {
 
             if history_split.is_empty() {
                 format!(
-                    "{}\n[INST] {} [/INST] ",
-                    DEFAULT_SYSTEM_PROMPT, text_from_chat
+                    "<s>[INST]{}[/INST]</s>\n[INST] {} [/INST] ",
+                    s_prompt, text_from_chat
                 )
             } else {
                 format!(
-                    "{}\n[INST] {} [/INST] {}\n[INST] {} [/INST] ",
-                    DEFAULT_SYSTEM_PROMPT, history_split[0], history_split[1], text_from_chat
+                    "<s>[INST]{}[/INST]</s>\n[INST] {} [/INST] {}\n[INST] {} [/INST] ",
+                    s_prompt, history_split[0], history_split[1], text_from_chat
                 )
             }
         } else {
             // No conversation history provided, use a standard format
             format!(
-                "{} [INST] {} [/INST]",
-                DEFAULT_SYSTEM_PROMPT, text_from_chat
+                "<s>[INST]{}[/INST]</s> [INST] {} [/INST]",
+                s_prompt, text_from_chat
             )
         };
 
@@ -108,9 +118,14 @@ impl Prompt {
     }
 }
 
-pub fn handle_user_input(which: Which, input: &str) -> Result<GeneratedPrompt> {
+pub fn handle_user_input(
+    which: Which,
+    input: &str,
+    system_prompt: Option<&String>,
+) -> Result<GeneratedPrompt> {
     let prompt = Prompt::Chat(input.to_string());
-    prompt.generate_prompt(&which, None)
+
+    prompt.generate_prompt(&which, None, system_prompt)
 }
 
 #[cfg(test)]
@@ -122,7 +137,7 @@ mod tests {
     fn test_one_prompt() {
         let prompt = Prompt::One("Example prompt".to_string());
         let which = Which::Mistral7b; // Example model type
-        let generated_prompt = prompt.generate_prompt(&which, None).unwrap();
+        let generated_prompt = prompt.generate_prompt(&which, None, None).unwrap();
         assert_eq!(generated_prompt.as_str(), "Example prompt");
     }
 
@@ -132,7 +147,7 @@ mod tests {
         let prompt_text = "User question";
         let prompt = Prompt::Chat(prompt_text.to_string());
         let which = Which::Zephyr7bBeta; // Example model type
-        let generated_prompt = prompt.generate_prompt(&which, None).unwrap();
+        let generated_prompt = prompt.generate_prompt(&which, None, None).unwrap();
         println!("Chat prompt (zephyr): {}", generated_prompt.as_str());
         assert!(generated_prompt.as_str().contains(prompt_text));
     }
@@ -143,7 +158,7 @@ mod tests {
         let prompt_text = "User question";
         let prompt = Prompt::Chat(prompt_text.to_string());
         let which = Which::Zephyr7bBeta; // Example model type
-        let generated_prompt = prompt.generate_prompt(&which, None).unwrap();
+        let generated_prompt = prompt.generate_prompt(&which, None, None).unwrap();
         println!("Chat prompt (zephyr): {}", generated_prompt.as_str());
         assert!(generated_prompt.as_str().contains("<|user|>"));
         assert!(generated_prompt.as_str().contains("</s>"));
@@ -160,7 +175,9 @@ mod tests {
         let prompt_text = "User question";
         let prompt = Prompt::Chat(prompt_text.to_string());
         let which = Which::Mistral7bInstruct; // Example model type
-        let generated_prompt = prompt.generate_prompt(&which, None).unwrap();
+        let generated_prompt = prompt
+            .generate_prompt(&which, None, Some(&DEFAULT_SYSTEM_PROMPT.to_string()))
+            .unwrap();
         println!("Chat prompt (no history): {}", generated_prompt.as_str());
         assert!(generated_prompt.as_str().contains(prompt_text));
         assert!(generated_prompt.as_str().contains(DEFAULT_SYSTEM_PROMPT));
@@ -176,12 +193,13 @@ mod tests {
             "Previous user question".to_string(),
             "Previous bot response".to_string(),
         ];
-        let generated_prompt = prompt.generate_prompt(&which, Some(&history)).unwrap();
+        let generated_prompt = prompt
+            .generate_prompt(&which, Some(&history), None)
+            .unwrap();
         println!("Chat prompt (with history): {}", generated_prompt.as_str());
         assert!(generated_prompt.as_str().contains(prompt_text));
         assert!(generated_prompt.as_str().contains("Previous user question"));
         assert!(generated_prompt.as_str().contains("Previous bot response"));
-        assert!(generated_prompt.as_str().contains(DEFAULT_SYSTEM_PROMPT));
     }
 
     // Test for chat model type 'mistral' formatting
@@ -190,13 +208,18 @@ mod tests {
         let prompt_text = "User question";
         let prompt = Prompt::Chat(prompt_text.to_string());
         let which = Which::Mistral7bInstruct; // Example model type
-        let generated_prompt = prompt.generate_prompt(&which, None).unwrap();
+        let generated_prompt = prompt
+            .generate_prompt(&which, None, Some(&DEFAULT_SYSTEM_PROMPT.to_string()))
+            .unwrap();
         println!("Chat prompt (mistral): {}", generated_prompt.as_str());
         assert!(generated_prompt.as_str().contains("[INST]"));
         assert!(generated_prompt.as_str().contains("[/INST]"));
         assert_eq!(
             generated_prompt.as_str(),
-            format!("{} [INST] {} [/INST]", DEFAULT_SYSTEM_PROMPT, prompt_text)
+            format!(
+                "<s>[INST]{}[/INST]</s> [INST] {} [/INST]",
+                DEFAULT_SYSTEM_PROMPT, prompt_text
+            )
         );
     }
 
@@ -210,15 +233,20 @@ mod tests {
             "Previous user question".to_string(),
             "Previous bot response".to_string(),
         ];
-        let generated_prompt = prompt.generate_prompt(&which, Some(&history)).unwrap();
+        let generated_prompt = prompt
+            .generate_prompt(&which, Some(&history), None)
+            .unwrap();
         println!("Chat prompt (mistral): {}", generated_prompt.as_str());
         assert!(generated_prompt.as_str().contains("[INST]"));
         assert!(generated_prompt.as_str().contains("[/INST]"));
         assert_eq!(
             generated_prompt.as_str(),
             format!(
-                "{}\n[INST] {} [/INST] {}\n[INST] {} [/INST] ",
-                DEFAULT_SYSTEM_PROMPT, history[0], history[1], prompt_text
+                "<s>[INST]{}[/INST]</s>\n[INST] {} [/INST] {}\n[INST] {} [/INST] ",
+                String::new(),
+                history[0],
+                history[1],
+                prompt_text
             )
         );
     }
@@ -229,13 +257,18 @@ mod tests {
         let prompt_text = "User question";
         let prompt = Prompt::Chat(prompt_text.to_string());
         let which = Which::Mistral7bInstruct; // Example model type
-        let generated_prompt = prompt.generate_prompt(&which, None).unwrap();
+        let generated_prompt = prompt
+            .generate_prompt(&which, None, Some(&DEFAULT_SYSTEM_PROMPT.to_string()))
+            .unwrap();
         println!("Chat prompt (mistral): {}", generated_prompt.as_str());
         assert!(generated_prompt.as_str().contains("[INST]"));
         assert!(generated_prompt.as_str().contains("[/INST]"));
         assert_eq!(
             generated_prompt.as_str(),
-            format!("{} [INST] {} [/INST]", DEFAULT_SYSTEM_PROMPT, prompt_text)
+            format!(
+                "<s>[INST]{}[/INST]</s> [INST] {} [/INST]",
+                DEFAULT_SYSTEM_PROMPT, prompt_text
+            )
         );
     }
 }

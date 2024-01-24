@@ -32,7 +32,7 @@ impl fmt::Display for Which {
 impl Which {
     // this is temporary solution while we only want to support a subset of models externally
     pub fn is_available(&self) -> bool {
-        matches!(self, Self::Mistral7bInstructQ2)
+        matches!(self, Self::Mistral7bInstruct)
     }
     pub fn available_models() -> Vec<Self> {
         Self::value_variants()

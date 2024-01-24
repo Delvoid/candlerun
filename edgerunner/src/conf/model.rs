@@ -38,7 +38,7 @@ impl Default for InferenceConfig {
             repeat_last_n: 64,
             tokenizer: None,
             verbose_prompt: true,
-            which: Which::Mistral7bInstructQ2,
+            which: Which::Mistral7bInstruct,
         }
     }
 }

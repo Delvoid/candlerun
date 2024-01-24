@@ -28,7 +28,7 @@ pub fn get_args() -> anyhow::Result<ArgsResult> {
                 .value_name("MODEL")
                 .help("The model to use")
                 .value_parser(value_parser!(Which))
-                .default_value("7b-mistral-instruct-Q2"),
+                .default_value("7b-mistral-instruct"),
         )
         .arg(
             Arg::new("prompt")

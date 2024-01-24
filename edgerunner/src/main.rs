@@ -57,7 +57,7 @@ fn main() {
                 &args.config.which,
                 stop_flag,
                 |t| {
-                    // print!("{t}");
+                    print!("{t}");
                     std::io::stdout().flush().unwrap();
                 },
             )

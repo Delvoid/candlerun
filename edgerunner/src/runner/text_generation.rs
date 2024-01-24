@@ -15,6 +15,18 @@ use crate::{conf::which::Which, model::prompt::GeneratedPrompt};
 
 use super::token_output_stream::TokenOutputStream;
 
+#[derive(Debug, thiserror::Error)]
+pub enum InferenceError {
+    #[error("Operation was stopped by the user")]
+    UserStopped,
+
+    #[error("Candle core error: {0}")]
+    CandleCoreError(#[from] candle_core::Error),
+
+    #[error("An error occurred: {0}")]
+    Other(#[from] anyhow::Error),
+}
+
 pub struct TextGeneration {
     model: ModelWeights,
     device: Device,
@@ -47,14 +59,15 @@ impl TextGeneration {
         }
     }
 
-    fn check_stop_flag(&self, stop_flag: &Arc<AtomicBool>) -> Result<()> {
+    fn check_stop_flag(&self, stop_flag: &Arc<AtomicBool>) -> Result<(), InferenceError> {
         if stop_flag.load(Ordering::SeqCst) {
             println!("Operation was stopped by the user");
-            Err(anyhow::Error::msg("Operation was stopped by the user"))
+            Err(InferenceError::UserStopped)
         } else {
             Ok(())
         }
     }
+
     pub fn run(
         &mut self,
         prompt: GeneratedPrompt,
@@ -62,13 +75,13 @@ impl TextGeneration {
         which: &Which,
         stop_flag: Arc<AtomicBool>,
         on_token: impl Fn(&str),
-    ) -> Result<(String, f64, f64, f64, f64)> {
+    ) -> Result<(String, f64, f64, f64, f64), InferenceError> {
         // check if model is available
         if !which.is_available() {
-            return Err(anyhow::Error::msg(format!(
+            return Err(InferenceError::Other(anyhow::Error::msg(format!(
                 "Model {:?} is not available",
                 which
-            )));
+            ))));
         }
 
         self.tokenizer.clear();
@@ -169,7 +182,10 @@ impl TextGeneration {
             full_response += &rest;
         }
 
-        std::io::stdout().flush()?;
+        std::io::stdout().flush().map_err(|e| {
+            InferenceError::Other(anyhow::Error::msg(format!("Failed to flush stdout: {}", e)))
+        })?;
+
         let dt = start_post_prompt.elapsed();
 
         Ok((

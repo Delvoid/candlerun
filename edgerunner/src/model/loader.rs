@@ -20,14 +20,16 @@ impl LoadModel {
     pub fn load_model(config: &InferenceConfig) -> Result<Model> {
         let model_path = config.model()?;
 
-        let model_weights = Self::load_model_weights(&model_path)?;
+        let device = device(false).expect("Could not get device");
+
+        let model_weights = Self::load_model_weights(&model_path, &device)?;
 
         let tokenizer = config.tokenizer()?;
 
-        Ok(Model::new(tokenizer, model_weights))
+        Ok(Model::new(tokenizer, model_weights, device))
     }
 
-    fn load_model_weights(model_path: &PathBuf) -> Result<ModelWeights> {
+    fn load_model_weights(model_path: &PathBuf, device: &Device) -> Result<ModelWeights> {
         let mut file = std::fs::File::open(model_path)?;
         let start = std::time::Instant::now();
 
@@ -38,7 +40,7 @@ impl LoadModel {
                 for (_, tensor) in model.tensor_infos.iter() {
                     let elem_count = tensor.shape.elem_count();
                     total_size_in_bytes +=
-                        elem_count * tensor.ggml_dtype.type_size() / tensor.ggml_dtype.blck_size();
+                        elem_count * tensor.ggml_dtype.type_size() / tensor.ggml_dtype.block_size();
                 }
                 println!(
                     "loaded {:?} tensors ({}) in {:.2}s",
@@ -46,15 +48,15 @@ impl LoadModel {
                     &format_size(total_size_in_bytes),
                     start.elapsed().as_secs_f32(),
                 );
-                Ok(ModelWeights::from_gguf(model, &mut file)?)
+                Ok(ModelWeights::from_gguf(model, &mut file, device)?)
             }
             Some("ggml" | "bin") | Some(_) | None => {
-                let model = ggml_file::Content::read(&mut file)?;
+                let model = ggml_file::Content::read(&mut file, device)?;
                 let mut total_size_in_bytes = 0;
                 for (_, tensor) in model.tensors.iter() {
                     let elem_count = tensor.shape().elem_count();
                     total_size_in_bytes +=
-                        elem_count * tensor.dtype().type_size() / tensor.dtype().blck_size();
+                        elem_count * tensor.dtype().type_size() / tensor.dtype().block_size();
                 }
                 println!(
                     "loaded {:?} tensors ({}) in {:.2}s",
@@ -94,8 +96,7 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(tokenizer: Tokenizer, weights: ModelWeights) -> Self {
-        let device = device(true).expect("Could not get device");
+    pub fn new(tokenizer: Tokenizer, weights: ModelWeights, device: Device) -> Self {
         Self {
             tokenizer,
             weights,

@@ -13,11 +13,25 @@ use edgerunner::{
     log_util::set_env_logger,
     model::{loader::LoadModel, prompt::handle_user_input},
     runner::text_generation::TextGeneration,
+    system_benchmark::{estimate_tflops, DeviceName},
 };
 use log::debug;
 
 fn main() {
     set_env_logger();
+
+    // Estimate TFLOPS
+    // when cuda or metal is enabled, it will estimate the TFLOPS for the GPU and CPU
+    let tflops_results = estimate_tflops().expect("Failed to estimate TFLOPS");
+    if !tflops_results.is_empty() {
+        for (name, tflops) in tflops_results {
+            match name {
+                DeviceName::CPU => println!("CPU TFLOPS: {:.2}", tflops),
+                DeviceName::GPU => println!("GPU TFLOPS: {:.2}", tflops),
+            }
+        }
+    }
+
     let stop_flag = Arc::new(AtomicBool::new(false));
 
     // uncomment to simulate stop flag

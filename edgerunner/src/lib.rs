@@ -7,6 +7,7 @@ pub mod conf;
 pub mod log_util;
 pub mod model;
 pub mod runner;
+pub mod system_benchmark;
 pub mod util;
 
 #[derive(Debug)]

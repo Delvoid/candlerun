@@ -16,6 +16,7 @@ const KERNEL_DIRS: [KernelDirectories; 1] = [KernelDirectories {
 }];
 
 fn main() -> Result<()> {
+    println!("cargo:rustc-env=CUDA_COMPUTE_CAP=87");
     println!("cargo:rerun-if-changed=build.rs");
 
     #[cfg(feature = "cuda")]

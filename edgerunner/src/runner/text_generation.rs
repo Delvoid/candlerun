@@ -76,6 +76,7 @@ impl TextGeneration {
         stop_flag: Arc<AtomicBool>,
         on_token: impl Fn(&str),
     ) -> Result<(String, f64, f64, f64, f64), InferenceError> {
+        self.check_stop_flag(&stop_flag)?;
         // check if model is available
         if !which.is_available() {
             return Err(InferenceError::Other(anyhow::Error::msg(format!(
